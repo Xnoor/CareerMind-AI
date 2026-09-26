@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: careermind_postgres
+    environment:
+      POSTGRES_USER: careermind_user
+      POSTGRES_PASSWORD: careermind_password
+      POSTGRES_DB: careermind_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U careermind_user -d careermind_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: careermind_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://careermind_user:careermind_password@postgres:5432/careermind_db
+      - JWT_SECRET=careermind_ai_super_secret_jwt_key_2026
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: careermind_frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=/api
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
